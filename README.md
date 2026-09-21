@@ -111,6 +111,26 @@ Requirements:
   fine. Signed URLs expire, so fetch a fresh one per session.
 - `.tar.gz` or `.zip` containing the `.app`.
 
+### Choosing where builds live
+
+Two things decide who can download your build: **where it is hosted**, and — for the
+default backend — **whether the repo is public**. Those axes interact, and the useful
+combinations are:
+
+| Repo | Hosting | Your build is | macOS minutes |
+| --- | --- | --- | --- |
+| private | GitHub release *(default)* | private | bill at [**10×**](#cost) |
+| public | GitHub release *(default)* | **downloadable by anyone** | free, unlimited |
+| public | `--r2` | private — 2h signed URL | free, unlimited |
+
+That last row is the reason `--r2` exists. A public repo is what makes macOS minutes free
+and unlimited, and the default backend inherits *repo* visibility — so on a public repo it
+publishes your binary. R2 is the only combination that keeps both the free minutes and a
+private build. The cost is a Cloudflare account and the `aws` CLI.
+
+If you are already on a private repo, the default backend is private too and `--r2` buys
+you nothing.
+
 ### Hosting your own builds
 
 By default a local build is uploaded as an asset on a **release of the same repo the
@@ -137,7 +157,8 @@ What that means for you:
 - **Private repo** — nothing changes. Release assets inherit repo visibility, so the build is
   readable only by people who can already read the repo.
 - **Public repo** — the asset *is* downloadable by anyone, and the CLI warns you when it
-  uploads. Use [`--r2`](#hosting-on-r2-instead) to keep the build private.
+  uploads. Use [`--r2`](#hosting-on-r2-instead) to keep the build private — see
+  [Choosing where builds live](#choosing-where-builds-live).
 
 All builds land on one reused tag, `native-sim-build`, with the asset clobbered each time,
 so the release list does not fill up with build noise. Deleting that release is safe.
