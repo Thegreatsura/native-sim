@@ -113,7 +113,7 @@ Requirements:
 
 ### Hosting your own builds
 
-By default a local build is uploaded as an asset on a **draft release of the same repo the
+By default a local build is uploaded as an asset on a **release of the same repo the
 workflow runs in**, and the runner fetches it with the job's own `GITHUB_TOKEN`:
 
 ```sh
@@ -126,9 +126,18 @@ This needs no third-party account and no credentials file. It works for **public
 repos alike**: a private repo's release assets are readable only by people who can read the
 repo, and there is no signed URL to expire mid-session.
 
-The release is created as a **draft**, which is not listed publicly — so a public repo does
-not start publishing your binaries as a side effect. If a release ever would be publicly
-downloadable, the CLI says so.
+The release is **published, not a draft**. GitHub only shows draft releases to callers with
+push access, and the workflow job runs with `contents: read` on purpose — so a draft is
+something the runner cannot fetch at all. Granting the job `contents: write` to work around
+that would give repo write access to a job that also opens a public tunnel, which is a worse
+trade than publishing a release.
+
+What that means for you:
+
+- **Private repo** — nothing changes. Release assets inherit repo visibility, so the build is
+  readable only by people who can already read the repo.
+- **Public repo** — the asset *is* downloadable by anyone, and the CLI warns you when it
+  uploads. Use [`--r2`](#hosting-on-r2-instead) to keep the build private.
 
 All builds land on one reused tag, `native-sim-build`, with the asset clobbered each time,
 so the release list does not fill up with build noise. Deleting that release is safe.

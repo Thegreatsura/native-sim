@@ -83,15 +83,18 @@ export async function up(cwd, flags) {
   }
 
   // Now that the repo exists, a local build can be hosted on its own release.
-  // The runner fetches it with the job's own token — no third-party account,
-  // and nothing publicly downloadable when the release stays a draft.
+  // The runner fetches it with the job's own token — no third-party account
+  // and no presigned URL to expire mid-session. The release is published rather
+  // than a draft because the job token is `contents: read`, which cannot see
+  // drafts; on a private repo the asset is private either way.
   if (appFile && !flags.r2) {
     step(`Uploading ${bold(appFile)} to ${bold(repo)}`);
     const uploaded = ghrelease.upload(cwd, repo, appFile);
     appReleaseAsset = uploaded.asset;
     ok(`uploaded ${(uploaded.bytes / 1048576).toFixed(1)} MB ${dim(`as ${uploaded.asset}`)}`);
     if (ghrelease.isPubliclyReadable(cwd, repo)) {
-      warn('published release on a public repo — the build is downloadable by anyone');
+      warn(`this repo is public, so ${uploaded.asset} is downloadable by anyone`);
+      warn(`keep the build private with ${bold('--r2')} ${dim('(native-sim r2)')}`);
     }
   }
 

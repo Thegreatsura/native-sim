@@ -33,9 +33,10 @@ function uploadToGitHub(cwd, file) {
 
   ok(`uploaded ${mb(result.bytes)} as ${dim(result.asset)}`);
   if (ghrelease.isPubliclyReadable(cwd, repo)) {
-    warn('this release is published on a public repo — the build is downloadable by anyone');
+    warn('this repo is public — the build is downloadable by anyone');
+    warn(`keep it private with ${bold('--r2')} ${dim('(native-sim r2)')}`);
   } else {
-    info('draft release on this repo — only people who can read the repo can fetch it');
+    info('release on this repo — only people who can read the repo can fetch it');
   }
   console.log('');
   console.log(dim(`  run it:  native-sim up --app-release ${result.asset}`));

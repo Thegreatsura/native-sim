@@ -6,6 +6,7 @@ import { doctor } from './commands/doctor.js';
 import { upload } from './commands/upload.js';
 import { r2Setup } from './commands/r2.js';
 import { turn } from './commands/turn.js';
+import { readFileSync } from 'node:fs';
 import { bold, dim, cyan } from './lib/ui.js';
 
 const HELP = `
@@ -65,9 +66,19 @@ export function parseArgs(argv) {
   const flags = {};
   const positional = [];
 
+  // Single-dash aliases. Without this `-h` is pushed as a positional and comes
+  // back as `Unknown command "-h"`, which is a poor first impression.
+  const SHORT = { h: 'help', v: 'version' };
+
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {
+      if (/^-[a-z]+$/.test(arg)) {
+        for (const ch of arg.slice(1)) {
+          if (SHORT[ch]) flags[SHORT[ch]] = true;
+        }
+        continue;
+      }
       positional.push(arg);
       continue;
     }
@@ -98,8 +109,16 @@ export function parseArgs(argv) {
 export async function main(argv) {
   const { command, flags } = parseArgs(argv);
 
-  if (flags.help || flags.h || command === 'help') {
+  if (flags.help || command === 'help') {
     console.log(HELP);
+    return;
+  }
+
+  if (flags.version) {
+    const pkg = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    console.log(pkg.version);
     return;
   }
 

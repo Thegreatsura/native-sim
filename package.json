@@ -1,10 +1,31 @@
 {
   "name": "native-sim",
-  "version": "0.1.0",
-  "description": "Push an Expo app to GitHub, build it on a free macOS runner, and stream the iOS Simulator back to your browser via serve-sim.",
+  "version": "0.1.1",
+  "description": "Stream a live iOS Simulator of your React Native or Expo app from a GitHub-hosted macOS runner to your browser — and let a coding agent drive it.",
+  "keywords": [
+    "expo",
+    "react-native",
+    "ios-simulator",
+    "github-actions",
+    "simulator",
+    "agent-device",
+    "serve-sim",
+    "preview"
+  ],
+  "homepage": "https://reactnativefeel.com/sim",
+  "author": "Rodrigo Figueroa (https://x.com/bidah)",
+  "license": "MIT",
   "type": "module",
-  "bin": { "native-sim": "bin/native-sim.js" },
-  "engines": { "node": ">=20" },
-  "files": ["bin", "src", "templates", "README.md"],
-  "license": "MIT"
+  "bin": {
+    "native-sim": "bin/native-sim.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "README.md"
+  ]
 }

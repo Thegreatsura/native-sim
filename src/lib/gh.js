@@ -1,8 +1,14 @@
-import { sh, shx } from './proc.js';
+import { sh, shx, has } from './proc.js';
+
+const INSTALL_GH = process.platform === 'win32'
+  ? 'Install it: winget install --id GitHub.cli'
+  : process.platform === 'darwin'
+    ? 'Install it: brew install gh'
+    : 'Install it: https://github.com/cli/cli#installation';
 
 export function requireAuth() {
-  if (!sh('which', ['gh']).ok) {
-    throw new Error('GitHub CLI not found. Install it: brew install gh');
+  if (!has('gh')) {
+    throw new Error(`GitHub CLI not found on PATH. ${INSTALL_GH}`);
   }
   if (!sh('gh', ['auth', 'status']).ok) {
     throw new Error('Not logged in to GitHub. Run: gh auth login');
@@ -152,7 +158,8 @@ export function setSecret(cwd, name, value) {
 
 export function listSecrets(cwd) {
   const r = sh('gh', ['secret', 'list', '--json', 'name', '-q', '.[].name'], { cwd });
-  return r.ok ? r.out.split('\n').filter(Boolean) : [];
+  // gh emits CRLF on Windows; a trailing \r would corrupt every secret name.
+  return r.ok ? r.out.split(/\r?\n/).map((n) => n.trim()).filter(Boolean) : [];
 }
 
 export function cancelRun(cwd, id) {
