@@ -305,7 +305,10 @@ jobs:
           GATE_TOKEN: ${{ inputs.gate_token }}
         run: |
           set -euo pipefail
-          curl -fsSL -o cloudflared.tgz \
+          # GitHub Releases downloads on the macOS runners occasionally die
+          # mid-transfer (curl exit 56). That must not scrap the whole
+          # sometimes-hours-long build, so retry transient AND hard failures.
+          curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors -o cloudflared.tgz \
             https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-arm64.tgz
           tar -xzf cloudflared.tgz
           chmod +x cloudflared
