@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { bold, dim, cyan } from './lib/ui.js';
 
 const HELP = `
-${bold('native-sim')} — stream an iOS Simulator of your Expo app from a GitHub Actions runner
+${bold('native-sim')} — stream an iOS Simulator of your Expo or React Native CLI app from a GitHub Actions runner
 
 ${bold('USAGE')}
   native-sim <command> [options]
@@ -26,6 +26,10 @@ ${bold('COMMANDS')}
   turn      Store TURN credentials as repo secrets, for --transport webrtc
 
 ${bold('OPTIONS')} ${dim('(native-sim up)')}
+  --framework <name> expo | react-native                 ${dim('(up/init/doctor; default expo)')}
+  --project-dir <p> App directory relative to repository root ${dim('(up/init/doctor; default .)')}
+  --dev             Build a Debug development app for local Metro development
+  --dev-url <url>   Expo: dev-client link; React Native: HTTPS Metro tunnel URL
   --minutes <n>     How long to hold the stream open        ${dim('default 30, max 350')}
   --device <name>   Simulator device                        ${dim('default "iPhone 17 Pro"')}
   --app-file <p>    Upload a local .app/.tar.gz and run it ${dim('(hosted on this repo)')}
@@ -52,6 +56,9 @@ ${bold('OPTIONS')} ${dim('(native-sim up)')}
 
 ${bold('EXAMPLES')}
   ${cyan('native-sim up --public --minutes 45')}
+  ${cyan('native-sim up --framework react-native')}
+  ${cyan('native-sim up --project-dir apps/mobile')}
+  ${cyan('native-sim up --dev --project-dir apps/mobile')}
   ${cyan('native-sim up --public --agent')}          ${dim('# stream + agent-device control')}
   ${cyan('native-sim up --mode go --device "iPhone 17"')}
   ${cyan('native-sim up --app https://expo.dev/artifacts/eas/xxxx.tar.gz --public')}
@@ -60,7 +67,7 @@ ${bold('EXAMPLES')}
   ${cyan('native-sim down')}
 `;
 
-const NEEDS_VALUE = new Set(['minutes', 'device', 'mode', 'scheme', 'runner', 'repo', 'message', 'app', 'app-file', 'app-release', 'expires', 'out', 'codec', 'max-dimension', 'fps', 'quality', 'transport']);
+const NEEDS_VALUE = new Set(['minutes', 'device', 'mode', 'scheme', 'runner', 'repo', 'message', 'app', 'app-file', 'app-release', 'expires', 'out', 'codec', 'max-dimension', 'fps', 'quality', 'transport', 'project-dir', 'dev-url', 'framework']);
 
 export function parseArgs(argv) {
   const flags = {};
@@ -120,6 +127,11 @@ export async function main(argv) {
     );
     console.log(pkg.version);
     return;
+  }
+
+  flags.framework ??= 'expo';
+  if (!['expo', 'react-native'].includes(flags.framework)) {
+    throw new Error(`--framework must be "expo" or "react-native", got "${flags.framework}"`);
   }
 
   if (flags.minutes !== undefined && (!Number.isFinite(flags.minutes) || flags.minutes < 1 || flags.minutes > 350)) {

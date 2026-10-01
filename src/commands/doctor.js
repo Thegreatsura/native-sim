@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { sh, has } from '../lib/proc.js';
-import { assertExpoProject } from '../lib/project.js';
+import { assertFrameworkProject, resolveProject } from '../lib/project.js';
 import { WORKFLOW_PATH, GATE_PATH } from './init.js';
 import { green, red, yellow, dim, bold } from '../lib/ui.js';
 
@@ -9,21 +9,23 @@ const PASS = green('✓');
 const FAIL = red('✗');
 const WARN = yellow('!');
 
-export async function doctor(cwd) {
+export async function doctor(cwd, flags = {}) {
   const checks = [];
   const add = (icon, label, detail) => checks.push(`  ${icon} ${label}${detail ? ` ${dim(detail)}` : ''}`);
 
   try {
-    const pkg = assertExpoProject(cwd);
-    add(PASS, 'Expo project', pkg.name);
+    const project = resolveProject(cwd, flags['project-dir']);
+    const framework = flags.framework ?? 'expo';
+    const pkg = assertFrameworkProject(project.directory, framework);
+    add(PASS, framework === 'expo' ? 'Expo project' : 'React Native CLI project', pkg.name);
   } catch (err) {
-    add(FAIL, 'Expo project', err.message.split('\n')[0]);
+    add(FAIL, flags.framework === 'react-native' ? 'React Native CLI project' : 'Expo project', err.message.split('\n')[0]);
   }
 
   add(has('git') ? PASS : FAIL, 'git');
 
   if (!has('gh')) {
-    add(FAIL, 'gh CLI', 'brew install gh');
+    add(FAIL, 'gh CLI', 'install from https://cli.github.com/');
   } else if (!sh('gh', ['auth', 'status']).ok) {
     add(FAIL, 'gh CLI authenticated', 'gh auth login');
   } else {
