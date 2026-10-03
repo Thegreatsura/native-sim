@@ -512,9 +512,9 @@ native-sim sends anonymous usage stats to [PostHog](https://posthog.com), so we
 know which commands and options people rely on:
 
 - the command (`up`, `down`, `upload`, …), and whether it failed and after how long
-- the flags you passed. `--mode`, `--transport`, `--codec`, `--device` and the
+- the flags you passed. `--framework`, `--mode`, `--transport`, `--codec`, `--device` and the
   numeric options are sent by value; on/off flags as `true`/`false`; everything
-  else (`--repo`, `--app`, `--app-file`, `--message`, `--scheme`, `--out`, …)
+  else (`--repo`, `--app`, `--app-file`, `--project-dir`, `--dev-url`, `--message`, …)
   only as `true`, never by value
 - the native-sim version, OS, CPU architecture, Node version and whether it ran in CI
 - a random ID created on first run in `~/.config/native-sim/telemetry.json`

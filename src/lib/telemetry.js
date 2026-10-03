@@ -20,8 +20,15 @@ const TIMEOUT_MS = 1500;
 const COMMANDS = new Set(['up', 'init', 'status', 'down', 'doctor', 'upload', 'r2', 'turn', 'help', 'version']);
 
 // Flags whose values are a fixed set or a number, so the value itself is the
-// signal. Everything else is reported as `true`.
-const VALUE_FLAGS = new Set(['mode', 'transport', 'codec', 'minutes', 'max-dimension', 'fps', 'quality', 'device']);
+// signal. Everything else is reported as `true`. A value outside the set (a
+// typo can hold anything) is reported as "other".
+const ENUM_FLAGS = {
+  framework: ['expo', 'react-native'],
+  mode: ['build', 'app', 'go'],
+  transport: ['http', 'webrtc'],
+  codec: ['mjpeg', 'h264', 'auto'],
+};
+const VALUE_FLAGS = new Set(['minutes', 'max-dimension', 'fps', 'quality', 'device']);
 
 const truthy = (value) => value !== undefined && value !== '' && value !== '0' && value !== 'false';
 
@@ -68,7 +75,9 @@ export function summarizeFlags(flags) {
   const out = {};
   for (const [name, value] of Object.entries(flags)) {
     if (name === '_positional' || !/^[a-z][a-z0-9-]{0,30}$/.test(name)) continue;
-    out[`flag_${name}`] = typeof value === 'boolean' || VALUE_FLAGS.has(name) ? value : true;
+    if (ENUM_FLAGS[name]) out[`flag_${name}`] = ENUM_FLAGS[name].includes(value) ? value : 'other';
+    else if (typeof value === 'boolean' || VALUE_FLAGS.has(name)) out[`flag_${name}`] = value;
+    else out[`flag_${name}`] = true;
   }
   return out;
 }
