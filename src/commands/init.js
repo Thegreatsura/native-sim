@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync, existsSync, readFileSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertExpoProject } from '../lib/project.js';
+import { assertFrameworkProject, resolveProject } from '../lib/project.js';
 import { GITIGNORE } from '../lib/git.js';
 import { ok, info, warn, dim } from '../lib/ui.js';
 
@@ -57,8 +57,12 @@ export function scaffold(cwd, { force = false } = {}) {
 }
 
 export async function init(cwd, flags) {
-  assertExpoProject(cwd);
+  const project = resolveProject(cwd, flags['project-dir']);
+  const framework = flags.framework ?? 'expo';
+  assertFrameworkProject(project.directory, framework);
   const changed = scaffold(cwd, { force: flags.force });
   if (!changed) info('already initialized — nothing to do');
-  console.log(`\nNext: ${dim('native-sim up')}`);
+  const option = project.relativePath === '.' ? '' : ` --project-dir "${project.relativePath}"`;
+  const frameworkOption = framework === 'expo' ? '' : ` --framework ${framework}`;
+  console.log(`\nNext: ${dim(`native-sim up${option}${frameworkOption}`)}`);
 }

@@ -1,11 +1,15 @@
 # native-sim
 
-Push an Expo app to GitHub, build it on a GitHub-hosted macOS runner, and stream
-the live iOS Simulator back to your browser through [`@expo/serve-sim`](https://github.com/expo/serve-sim).
+Push an Expo app (the default) or a plain React Native CLI app to GitHub, build it
+on a GitHub-hosted macOS runner, and stream the live iOS Simulator back to your
+browser through [`@expo/serve-sim`](https://github.com/expo/serve-sim).
 
 ```sh
 cd my-expo-app
 native-sim up --public --minutes 45
+
+# Plain React Native CLI project
+native-sim up --framework react-native --public --minutes 45
 ```
 
 ```
@@ -24,7 +28,7 @@ native-sim up --public --minutes 45
 
 1. `git init` / commit / push, creating the GitHub repo if there isn't one.
 2. Dispatches `.github/workflows/native-sim.yml` with a session id and a one-time access key.
-3. The runner boots a simulator, `expo prebuild` + `xcodebuild`s a Release build, installs and launches it.
+3. The runner boots a simulator and builds the selected framework's iOS app: Expo uses `expo prebuild`; React Native CLI uses checked-in iOS files. It installs and launches the app.
 4. `serve-sim --detach` captures the simulator; a small auth gate fronts it; `cloudflared` opens a tunnel.
 5. The runner publishes the URL as a **commit status** — the one GitHub surface readable *while a job is still running* (logs and artifacts only land after it ends).
 6. The CLI polls for that status and opens your browser.
@@ -54,6 +58,10 @@ already-built app from a repo containing no source, see
 | `--minutes <n>` | `30` | Stream lifetime. Max 350; GitHub kills hosted jobs at 6h. |
 | `--device <name>` | `iPhone 17 Pro` | Falls back to the newest available iPhone. |
 | `--mode <build\|app\|go>` | `build` | `app` installs a prebuilt archive and skips compiling entirely. `go` uses Expo Go — fast, but only for projects without custom native code. |
+| `--framework <name>` | `expo` | `expo` or `react-native`. Expo remains the default. |
+| `--project-dir <path>` | `.` | Selected app directory relative to the repository root. Also supported by `init` and `doctor`. |
+| `--dev` | off | Build a Debug app for local Metro development. |
+| `--dev-url <url>` | off | Expo: full dev-client link. React Native CLI: public HTTPS Metro tunnel URL. Implies `--dev`. |
 | `--scheme <name>` | workspace name | Xcode scheme. |
 | `--runner <label>` | `macos-26` | Must be arm64: `serve-sim` ships arm64-only native binaries. `macos-26`/`macos-latest` and `macos-15` are arm64; the `-large`/`-intel` labels are x64 and will not work. |
 | `--codec <c>` | `mjpeg` | `mjpeg` is the only codec that works: `/stream.avcc` (h264) returns `200` and emits zero bytes on GitHub's macOS runners. |
@@ -67,24 +75,102 @@ already-built app from a repo containing no source, see
 | `--repo <name>` | directory name | Repo name when creating one. |
 | `--no-open` | | Don't open the browser. |
 
+### Framework selection
+
+```sh
+native-sim up
+native-sim up --framework react-native
+```
+
+Omitting `--framework` selects Expo. `init` and `doctor` accept the same option
+when validating the selected app. A React Native CLI project must declare
+`react-native` and include its checked-in `ios/Podfile` and Xcode project; Expo
+projects should use the default `--framework expo`.
+
+## Monorepos
+
+Run from the monorepo root and select the app directory:
+
+```sh
+native-sim doctor --project-dir apps/mobile
+native-sim init --project-dir apps/mobile
+native-sim up --project-dir apps/mobile
+native-sim up --framework react-native --project-dir apps/native
+```
+
+The CLI pushes the root repository and writes the workflow and auth gate at that
+root. Dependencies are installed using the root lockfile so workspace packages
+remain available; framework build commands, native build caches, and exported
+archives use the selected app directory. Supported root lockfiles include Bun,
+pnpm, Yarn, and npm. Keep the generated workflow on the repository's default branch before
+dispatching it from a feature branch.
+
+## Fast Refresh from your computer
+
+`--dev` and `--dev-url` build a Debug app instead of a Release app. Expo projects
+need `expo-dev-client` (install it with `npx expo install expo-dev-client`). For a
+React Native CLI app, `--dev` alone requires configuring a reachable Metro server
+from the React Native Dev Menu; use `--dev-url` to set up the HTTPS tunnel proxy
+automatically.
+
+For Expo, enter a public Metro URL manually in the development launcher:
+
+```sh
+native-sim up --project-dir apps/mobile --dev
+```
+
+To open the app directly into a locally running Metro tunnel, start Metro in the
+app directory and leave it running:
+
+```sh
+cd apps/mobile
+npx expo start --dev-client --tunnel
+```
+
+Copy the complete development-client link printed by Expo (the `exp+...://` link,
+including its encoded `url` query), then run from the repository root:
+
+```sh
+native-sim up --project-dir apps/mobile --dev-url "<development-client-link>"
+```
+
+For plain React Native CLI, pass the HTTPS URL from your Metro tunnel instead.
+The workflow starts a Caddy reverse proxy on the runner at the simulator's
+standard `localhost:8081` Metro address, forwarding to that HTTPS tunnel:
+
+```sh
+npx react-native start
+# In another terminal, create a public HTTPS tunnel to local port 8081.
+native-sim up --framework react-native --project-dir apps/native \
+  --dev-url "https://your-metro-tunnel.example"
+```
+
+The tunnel must be reachable from the GitHub runner; localhost and LAN URLs will
+not work. The app connects after installation, while JS and style edits use Fast
+Refresh through your local Metro server. Keep Metro and the native-sim session
+running. `--dev` and `--dev-url` apply only to build mode. Debug and Release builds
+use separate caches; Release cache hits refresh Expo bundles with
+`expo export:embed` and React Native CLI bundles with `react-native bundle`.
+
 ## Build caching (on by default)
 
-The native build is the whole cost: **28.4 minutes** measured cold. native-sim caches the
-built `.app` keyed on [`@expo/fingerprint`](https://www.npmjs.com/package/@expo/fingerprint),
-which hashes the inputs that affect the *native* build — dependencies, config plugins,
-native `app.json` fields — and deliberately ignores your application JS.
+The native build is the whole cost: **28.4 minutes** measured cold. Both Expo and
+React Native CLI builds use [`@expo/fingerprint`](https://www.npmjs.com/package/@expo/fingerprint)
+to hash native-build inputs while ignoring application JS. Framework, app
+directory, and Debug/Release configuration are also part of the cache key.
 
-On a cache hit the build is skipped entirely and `expo export:embed` rewrites
-`main.jsbundle` inside the restored `.app`, so you get the cached native shell running
-your current JavaScript.
+On a Release cache hit the native build is skipped and the appropriate framework
+bundler rewrites `main.jsbundle` inside the restored `.app`, so it runs your current
+JavaScript. Debug builds use the live Metro connection instead.
 
 | | Stream URL | App on screen |
 |---|---|---|
 | Cold cache | ~5 min | ~33 min |
 | Warm cache | ~3 min | **7 min (measured)** |
 
-Change JS → cache hit. Change a native dependency or config plugin → fingerprint moves
-→ full rebuild → new cache entry. Caches are 10 GB/repo and evict after 7 days unused.
+Change JS → cache hit. Change a native dependency, manifest, or iOS project input →
+fingerprint moves → full rebuild → new cache entry. Caches are 10 GB/repo and evict
+after 7 days unused.
 
 Requires no configuration and no agent involvement — it is part of the workflow.
 

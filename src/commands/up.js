@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import * as git from '../lib/git.js';
 import * as gh from '../lib/gh.js';
 import { sh, sleep, open as openUrl } from '../lib/proc.js';
-import { assertExpoProject, defaultRepoName } from '../lib/project.js';
+import { assertFrameworkProject, defaultRepoName, resolveProject } from '../lib/project.js';
 import { scaffold, WORKFLOW_PATH } from './init.js';
 import { saveSession } from '../lib/session.js';
+import { resolveDevelopment } from '../lib/dev.js';
 import * as r2 from '../lib/r2.js';
 import * as ghrelease from '../lib/ghrelease.js';
 import { info, ok, warn, step, spinner, bold, dim, cyan, green } from '../lib/ui.js';
@@ -17,6 +18,9 @@ export async function up(cwd, flags) {
   const appFile = flags['app-file'];
   const appRelease = flags['app-release'];
   const mode = flags.app || appFile || appRelease ? 'app' : (flags.mode ?? 'build');
+  const project = resolveProject(cwd, flags['project-dir']);
+  const framework = flags.framework ?? 'expo';
+  const { enabled: dev, url: devUrl } = resolveDevelopment(flags, mode, framework);
 
   // R2 uploads happen before any git work, so a bad config fails fast rather
   // than after a push and a dispatch. A GitHub-hosted upload cannot: it needs
@@ -34,7 +38,12 @@ export async function up(cwd, flags) {
 
   // In app mode nothing is compiled from this checkout, so the directory does
   // not have to be an Expo project — the repo only carries the workflow.
-  if (mode !== 'app') assertExpoProject(cwd);
+  if (mode !== 'app') {
+    if (mode === 'go' && framework !== 'expo') {
+      throw new Error('--mode go is only supported with --framework expo.');
+    }
+    assertFrameworkProject(project.directory, framework);
+  }
   gh.requireAuth();
 
   step('Preparing repository');
@@ -113,6 +122,10 @@ export async function up(cwd, flags) {
     minutes: String(flags.minutes ?? 30),
     device: flags.device ?? 'iPhone 17 Pro',
     mode,
+    framework,
+    project_dir: project.relativePath,
+    dev: dev ? 'true' : 'false',
+    dev_url: devUrl,
     app_url: appUrl,
     app_release_asset: appReleaseAsset,
     export_app: flags.export ? 'true' : 'false',
@@ -142,6 +155,10 @@ export async function up(cwd, flags) {
   console.log('');
   console.log(dim(`  Anyone with that link can drive the simulator.`));
   console.log(dim(`  Stop it early with: native-sim down`));
+  if (devUrl && framework === 'expo') console.log(dim('  Keep local Metro and its tunnel running; the app will connect after installation.'));
+  else if (devUrl) console.log(dim('  Keep local Metro and its HTTPS tunnel running; the runner proxies it to the simulator.'));
+  else if (dev && framework === 'expo') console.log(dim('  After installation, enter your public Metro URL in the development launcher.'));
+  else if (dev) console.log(dim('  Open the React Native Dev Menu to configure a reachable Metro server.'));
   console.log('');
 
   if (flags.agent) printAgentConnect(base, gateToken);
