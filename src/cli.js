@@ -8,6 +8,7 @@ import { r2Setup } from './commands/r2.js';
 import { turn } from './commands/turn.js';
 import { readFileSync } from 'node:fs';
 import { bold, dim, cyan } from './lib/ui.js';
+import { commandName, summarizeFlags, track } from './lib/telemetry.js';
 
 const HELP = `
 ${bold('native-sim')} — stream an iOS Simulator of your Expo or React Native CLI app from a GitHub Actions runner
@@ -116,6 +117,22 @@ export function parseArgs(argv) {
 export async function main(argv) {
   const { command, flags } = parseArgs(argv);
 
+  // Sent alongside the command rather than before it, so it costs no
+  // wall-clock time.
+  const name = commandName(flags.help ? 'help' : flags.version ? 'version' : command);
+  const sent = track('command_run', { command: name, ...summarizeFlags(flags) });
+  const started = Date.now();
+  try {
+    await run(command, flags);
+  } catch (err) {
+    await track('command_failed', { command: name, duration_ms: Date.now() - started });
+    throw err;
+  } finally {
+    await sent;
+  }
+}
+
+async function run(command, flags) {
   if (flags.help || command === 'help') {
     console.log(HELP);
     return;

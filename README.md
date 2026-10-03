@@ -506,6 +506,24 @@ than fighting the constraints.
 - Node 20+
 - An Expo project (`expo` in `package.json`)
 
+## Telemetry
+
+native-sim sends anonymous usage stats to [PostHog](https://posthog.com), so we
+know which commands and options people rely on:
+
+- the command (`up`, `down`, `upload`, …), and whether it failed and after how long
+- the flags you passed. `--mode`, `--transport`, `--codec`, `--device` and the
+  numeric options are sent by value; on/off flags as `true`/`false`; everything
+  else (`--repo`, `--app`, `--app-file`, `--message`, `--scheme`, `--out`, …)
+  only as `true`, never by value
+- the native-sim version, OS, CPU architecture, Node version and whether it ran in CI
+- a random ID created on first run in `~/.config/native-sim/telemetry.json`
+
+Nothing from your project, repository, GitHub account, credentials or stream is
+sent. Opt out with `DO_NOT_TRACK=1` or `NATIVE_SIM_TELEMETRY_DISABLED=1`.
+Requests are capped at 1.5 seconds and never change a command's output or exit
+code.
+
 ## License
 
 MIT
