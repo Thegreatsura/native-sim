@@ -2,7 +2,7 @@
 
 Push an Expo app (the default) or a plain React Native CLI app to GitHub, build it
 on a GitHub-hosted macOS runner, and stream the live iOS Simulator back to your
-browser through [`@expo/serve-sim`](https://github.com/expo/serve-sim).
+browser through [`serve-sim`](https://github.com/bidah/serve-sim), our fork of [expo/serve-sim](https://github.com/expo/serve-sim).
 
 ```sh
 cd my-expo-app

@@ -1,6 +1,6 @@
 ---
 name: native-sim
-description: Stream a live, interactive iOS Simulator of an Expo app from a free GitHub Actions macOS runner using @expo/serve-sim, tunnelled to a browser. Use when asked to preview an Expo/React Native app without a local Mac, to build iOS on GitHub Actions, to share a running simulator with someone, to set up PR simulator previews, or when debugging native-sim itself (workflow not registering, stream "connecting", slow builds, cache misses).
+description: Stream a live, interactive iOS Simulator of an Expo app from a free GitHub Actions macOS runner using serve-sim (our fork, bidah/serve-sim), tunnelled to a browser. Use when asked to preview an Expo/React Native app without a local Mac, to build iOS on GitHub Actions, to share a running simulator with someone, to set up PR simulator previews, or when debugging native-sim itself (workflow not registering, stream "connecting", slow builds, cache misses).
 ---
 
 # native-sim
